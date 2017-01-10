@@ -48,6 +48,7 @@ public class VersionWindow extends JFrame {
     });
     
     setVisible(true);
+    setLocationRelativeTo(null);
   }
   
   void setVersions() {
