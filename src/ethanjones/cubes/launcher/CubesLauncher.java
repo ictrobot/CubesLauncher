@@ -20,9 +20,13 @@ public class CubesLauncher {
   public static final HashMap<String, Version> versions = new HashMap<String, Version>();
   
   public static void main(String[] args) {
+    Thread.currentThread().setUncaughtExceptionHandler(UncaughtExceptionHandler.INSTANCE);
+    Thread.setDefaultUncaughtExceptionHandler(UncaughtExceptionHandler.INSTANCE);
+
     SwingUtilities.invokeLater(new Runnable() {
       @Override
       public void run() {
+        Thread.currentThread().setUncaughtExceptionHandler(UncaughtExceptionHandler.INSTANCE);
         new VersionWindow();
       }
     });
