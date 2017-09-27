@@ -194,7 +194,10 @@ public class CubesLauncher {
         ftp.disconnect();
         throw new LauncherException("Failed to set ftp user");
       }
-  
+      if (!ftp.setFileType(FTPClient.BINARY_FILE_TYPE)) {
+        ftp.disconnect();
+        throw new LauncherException("Failed to set ftp file type");
+      }
       OutputStream outputStream = null;
       try {
         outputStream = new BufferedOutputStream(new FileOutputStream(local));
