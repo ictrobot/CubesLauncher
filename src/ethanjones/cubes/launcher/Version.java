@@ -1,6 +1,6 @@
 package ethanjones.cubes.launcher;
 
-public class Version {
+public class Version implements java.io.Serializable {
   final String name;
   final boolean release;
   final String downloadPath;

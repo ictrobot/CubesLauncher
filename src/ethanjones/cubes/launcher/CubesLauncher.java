@@ -115,7 +115,7 @@ public class CubesLauncher {
           }
         }
       }
-      
+
       ftp.logout();
     } catch (IOException e) {
       error = true;
@@ -129,12 +129,51 @@ public class CubesLauncher {
         }
       }
     }
-    if (error) throw new LauncherException("Error whilst downloading versions");
+    if (error) {
+      if (loadVersionCache()) {
+        JOptionPane.showMessageDialog(null, "Error whilst downloading versions, using cached versions.", "Cubes Launcher", JOptionPane.INFORMATION_MESSAGE);
+      } else {
+        throw new LauncherException("Error whilst downloading versions, and no cache is available");
+      }
+    } else {
+      saveVersionCache();
+    }
+  }
+
+  private static void saveVersionCache() {
+    long t = System.nanoTime();
+    try {
+      File launcherFolder = getLauncherFolder();
+      File versionCache = new File(launcherFolder, "version_cache");
+      ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(versionCache));
+      oos.writeObject(versions);
+      oos.close();
+    } catch (Exception e) {
+      System.out.println("Failed to save version cache");
+      e.printStackTrace();
+    }
+    t = System.nanoTime() - t;
+    System.out.println("Took " + t + "ns to save version cache");
+  }
+
+  private static boolean loadVersionCache() {
+    try {
+      versions.clear();
+      File launcherFolder = getLauncherFolder();
+      File versionCache = new File(launcherFolder, "version_cache");
+      ObjectInputStream oos = new ObjectInputStream(new FileInputStream(versionCache));
+      versions.putAll((HashMap<String, Version>) oos.readObject());
+      oos.close();
+      return true;
+    } catch (Exception e) {
+      System.out.println("Failed to load version cache");
+      e.printStackTrace();
+    }
+    return false;
   }
   
   public static void run(Version version) {
-    File baseFolder = getBaseFolder();
-    File launcherFolder = new File(baseFolder, "launcher");
+    File launcherFolder = getLauncherFolder();
     File versionFolder = new File(launcherFolder, "versions");
     versionFolder.mkdirs();
     
@@ -272,15 +311,19 @@ public class CubesLauncher {
     return digest.digest();
   }
   
-  private static File getBaseFolder() {
+  private static File getLauncherFolder() {
     File homeDir = new File(System.getProperty("user.home"));
     String str = (System.getProperty("os.name")).toUpperCase();
+    File cubesDir = null;
     if (str.contains("WIN")) {
-      return new File(System.getenv("APPDATA"), "Cubes");
+      cubesDir =  new File(System.getenv("APPDATA"), "Cubes");
     } else if (str.contains("MAC")) {
-      return new File(new File(new File(homeDir, "Library"), "Application Support"), "Cubes");
+      cubesDir = new File(new File(new File(homeDir, "Library"), "Application Support"), "Cubes");
     } else {
-      return new File(homeDir, ".Cubes");
+      cubesDir = new File(homeDir, ".Cubes");
     }
+    File launcherDir = new File(cubesDir, "launcher");
+    launcherDir.mkdirs();
+    return launcherDir;
   }
 }
