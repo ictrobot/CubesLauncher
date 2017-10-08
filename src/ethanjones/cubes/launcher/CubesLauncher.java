@@ -65,7 +65,12 @@ public class CubesLauncher {
       for (FTPFile ftpDirectory : releasesDirectories) {
         String v = ftpDirectory.getName();
         String path = FTP_RELEASES_PATH + v + "/client-" + v + ".jar";
-        versions.put(v, new Version(v, true, path));
+        FTPFile[] ftpFiles = ftp.listFiles(path);
+        if (ftpFiles == null || ftpFiles.length != 1) {
+          System.out.println("Invalid release " + v + " " + path);
+          continue;
+        }
+        versions.put(v, new Version(v, true, path, ftpFiles[0].getSize()));
       }
       
       FTPFile[] snapshotsDirectories = ftp.listDirectories(FTP_SNAPSHOTS_PATH);
@@ -85,7 +90,7 @@ public class CubesLauncher {
         });
         FTPFile file = ftpFiles[ftpFiles.length - 1];
         String path = FTP_SNAPSHOTS_PATH + v + "/" + file.getName();
-        versions.put(v, new Version(v, false, path));
+        versions.put(v, new Version(v, false, path, file.getSize()));
       }
       
       for (Version version : versions.values()) {
@@ -180,12 +185,20 @@ public class CubesLauncher {
     File jarFile = new File(versionFolder, version.name + ".jar");
     boolean update = true;
     if (jarFile.exists()) {
+      if (jarFile.length() == version.getExpectedFileSize()) {
+        System.out.println(jarFile + " matches expected file size: " + version.getExpectedFileSize());
+      } else {
+        System.out.println(jarFile + " does not match expected file size: " + version.getExpectedFileSize());
+        jarFile.delete();
+      }
+    }
+    if (jarFile.exists()) {
       byte[] fileHash = sha1HashFile(jarFile);
-      if (Arrays.equals(fileHash, version.getExpectedHash())) {
-        System.out.println(jarFile + " matches hash: " + version.getExpectedHashString());
+      if (Arrays.equals(fileHash, version.getExpectedHash()) && jarFile.length() == version.getExpectedFileSize()) {
+        System.out.println(jarFile + " matches expected hash: " + version.getExpectedHashString());
         update = false;
       } else {
-        System.out.println(jarFile + " does not matches hash: " + version.getExpectedHashString());
+        System.out.println(jarFile + " does not match expected hash: " + version.getExpectedHashString());
         jarFile.delete();
       }
     }

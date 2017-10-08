@@ -7,16 +7,18 @@ public class Version implements java.io.Serializable {
   
   private String stringHash;
   private byte[] hash;
+  private long fileSize;
   
-  Version(String name, boolean release, String downloadPath) {
+  Version(String name, boolean release, String downloadPath, long fileSize) {
     this.name = name;
     this.release = release;
     this.downloadPath = downloadPath;
+    this.fileSize = fileSize;
   }
   
   @Override
   public String toString() {
-    return name + (release ? " release " : " ") + downloadPath + (stringHash != null ? " " + stringHash : "");
+    return name + (release ? " release " : " ") + downloadPath + " " + fileSize + " " + (stringHash != null ? " " + stringHash : "");
   }
   
   void setSHA1Hash(String stringHash, byte[] hash) {
@@ -30,5 +32,9 @@ public class Version implements java.io.Serializable {
   
   String getExpectedHashString() {
     return stringHash;
+  }
+
+  public long getExpectedFileSize() {
+    return fileSize;
   }
 }
