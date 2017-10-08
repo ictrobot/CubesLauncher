@@ -178,37 +178,17 @@ public class CubesLauncher {
     return false;
   }
   
-  public static void run(Version version, RunStatus runStatus) {
+  static void run(Version version, RunStatus runStatus) {
     File launcherFolder = getLauncherFolder();
     File versionFolder = new File(launcherFolder, "versions");
     versionFolder.mkdirs();
-    
     File jarFile = new File(versionFolder, version.name + ".jar");
-    boolean update = true;
-    if (jarFile.exists()) {
-      if (runStatus != null) runStatus.update(RunStatus.Stage.verifying, 0);
 
-      if (jarFile.length() == version.getExpectedFileSize()) {
-        System.out.println(jarFile + " matches expected file size: " + version.getExpectedFileSize());
-      } else {
-        System.out.println(jarFile + " does not match expected file size: " + version.getExpectedFileSize());
-        jarFile.delete();
-      }
-    }
-    if (jarFile.exists()) {
-      if (runStatus != null) runStatus.update(RunStatus.Stage.verifying, 0);
+    int counter = 0;
+    while (!verify(version, jarFile, runStatus)) {
+      if (counter == 3) throw new IllegalStateException("Failed verification 3 times");
+      counter++;
 
-      byte[] fileHash = sha1HashFile(jarFile);
-      if (Arrays.equals(fileHash, version.getExpectedHash()) && jarFile.length() == version.getExpectedFileSize()) {
-        System.out.println(jarFile + " matches expected hash: " + version.getExpectedHashString());
-        update = false;
-      } else {
-        System.out.println(jarFile + " does not match expected hash: " + version.getExpectedHashString());
-        jarFile.delete();
-      }
-    }
-    if (update) {
-      if (runStatus != null) runStatus.update(RunStatus.Stage.downloading, 0);
       downloadVersion(version, jarFile, runStatus);
     }
 
@@ -242,9 +222,32 @@ public class CubesLauncher {
       throw new LauncherException("Failed to start client", e);
     }
   }
+
+  private static boolean verify(Version version, File jarFile, RunStatus runStatus) {
+    if (!jarFile.exists()) return false;
+    if (runStatus != null) runStatus.update(RunStatus.Stage.verifying, 0);
+
+    if (jarFile.length() == version.getExpectedFileSize()) {
+      System.out.println(jarFile + "\t matches expected file size: " + version.getExpectedFileSize());
+    } else {
+      System.out.println(jarFile + "\t does not match expected file size: " + version.getExpectedFileSize());
+      jarFile.delete();
+      return false;
+    }
+    byte[] fileHash = sha1HashFile(jarFile);
+    if (Arrays.equals(fileHash, version.getExpectedHash())) {
+      System.out.println(jarFile + "\t matches expected hash: " + version.getExpectedHashString());
+    } else {
+      System.out.println(jarFile + "\t does not match expected hash: " + version.getExpectedHashString());
+      jarFile.delete();
+      return false;
+    }
+    return true;
+  }
   
   private static void downloadVersion(final Version version, File local, final RunStatus runStatus) {
     if (version == null || version.downloadPath == null) throw new IllegalStateException("Version null");
+    if (runStatus != null) runStatus.update(RunStatus.Stage.downloading, 0);
 
     FTPClient ftp = new FTPClient();
     FTPClientConfig config = new FTPClientConfig();
