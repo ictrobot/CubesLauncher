@@ -23,6 +23,11 @@ public class VersionWindow extends JFrame {
   private Box box;
   private JComboBox<String> version;
   private JButton play;
+
+  private RunStatus runStatus;
+  private JLabel runLabel;
+  private JProgressBar runProgress;
+
   
   VersionWindow() {
     INSTANCE = this;
@@ -52,8 +57,14 @@ public class VersionWindow extends JFrame {
   }
   
   void setVersions() {
-    if (version != null) remove(box);
-    if (loadingLabel != null) remove(loadingLabel);
+    if (box != null) {
+      remove(box);
+      box = null;
+    }
+    if (loadingLabel != null) {
+      remove(loadingLabel);
+      loadingLabel = null;
+    }
     
     ArrayList<String> releases = new ArrayList<String>();
     ArrayList<String> snapshots = new ArrayList<String>();
@@ -80,13 +91,58 @@ public class VersionWindow extends JFrame {
     play.addActionListener(new ActionListener() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        String s = (String) version.getSelectedItem();
-        dispose();
-        CubesLauncher.run(CubesLauncher.versions.get(s));
+        final String s = (String) version.getSelectedItem();
+        final RunStatus runStatus = new RunStatus();
+        VersionWindow.this.runStatus = runStatus;
+        new Thread("Cubes-Run") {
+          @Override
+          public void run() {
+            CubesLauncher.run(CubesLauncher.versions.get(s), runStatus);
+          }
+        }.start();
       }
     });
     box.add(play);
     add(box, BorderLayout.PAGE_END);
     revalidate();
+  }
+
+  void updateRunProgress() {
+    if (runStatus != null) {
+      if (box != null) {
+        remove(box);
+        box = null;
+      }
+      if (loadingLabel != null) {
+        remove(loadingLabel);
+        loadingLabel = null;
+      }
+
+      if (runStatus.stage == RunStatus.Stage.verifying) {
+        if (runProgress != null) {
+          remove(runProgress);
+          runProgress = null;
+        }
+
+        if (runLabel == null) {
+          runLabel = new JLabel("Verifying", SwingConstants.CENTER);
+          add(runLabel, BorderLayout.PAGE_END);
+        }
+      } else if (runStatus.stage == RunStatus.Stage.downloading) {
+        if (runLabel != null) {
+          remove(runLabel);
+          runLabel = null;
+        }
+
+        if (runProgress == null) {
+          runProgress = new JProgressBar(0, 100);
+          runProgress.setStringPainted(true);
+          add(runProgress, BorderLayout.PAGE_END);
+        }
+        int percent = (int) (runStatus.progress * 100);
+        runProgress.setValue(percent);
+        runProgress.setString("Downloading " + percent +"%");
+      }
+    }
   }
 }

@@ -1,6 +1,7 @@
 package ethanjones.cubes.launcher;
 
 import org.apache.commons.net.ftp.*;
+import org.apache.commons.net.io.CopyStreamAdapter;
 
 import javax.swing.*;
 import java.io.*;
@@ -18,7 +19,7 @@ public class CubesLauncher {
   public static final String FTP_SNAPSHOTS_PATH = "maven/snapshots/ethanjones/cubes/client/";
   public static final String JAVA_CLASS = "ethanjones.cubes.core.platform.desktop.ClientLauncher";
   public static final HashMap<String, Version> versions = new HashMap<String, Version>();
-  
+
   public static void main(String[] args) {
     Thread.currentThread().setUncaughtExceptionHandler(UncaughtExceptionHandler.INSTANCE);
     Thread.setDefaultUncaughtExceptionHandler(UncaughtExceptionHandler.INSTANCE);
@@ -177,7 +178,7 @@ public class CubesLauncher {
     return false;
   }
   
-  public static void run(Version version) {
+  public static void run(Version version, RunStatus runStatus) {
     File launcherFolder = getLauncherFolder();
     File versionFolder = new File(launcherFolder, "versions");
     versionFolder.mkdirs();
@@ -185,6 +186,8 @@ public class CubesLauncher {
     File jarFile = new File(versionFolder, version.name + ".jar");
     boolean update = true;
     if (jarFile.exists()) {
+      if (runStatus != null) runStatus.update(RunStatus.Stage.verifying, 0);
+
       if (jarFile.length() == version.getExpectedFileSize()) {
         System.out.println(jarFile + " matches expected file size: " + version.getExpectedFileSize());
       } else {
@@ -193,6 +196,8 @@ public class CubesLauncher {
       }
     }
     if (jarFile.exists()) {
+      if (runStatus != null) runStatus.update(RunStatus.Stage.verifying, 0);
+
       byte[] fileHash = sha1HashFile(jarFile);
       if (Arrays.equals(fileHash, version.getExpectedHash()) && jarFile.length() == version.getExpectedFileSize()) {
         System.out.println(jarFile + " matches expected hash: " + version.getExpectedHashString());
@@ -203,9 +208,17 @@ public class CubesLauncher {
       }
     }
     if (update) {
-      downloadFile(version.downloadPath, jarFile);
+      if (runStatus != null) runStatus.update(RunStatus.Stage.downloading, 0);
+      downloadVersion(version, jarFile, runStatus);
     }
-    
+
+    SwingUtilities.invokeLater(new Runnable() {
+      @Override
+      public void run() {
+        VersionWindow.INSTANCE.dispose();
+      }
+    });
+
     try {
       URLClassLoader classLoader = (URLClassLoader)ClassLoader.getSystemClassLoader();
       Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
@@ -230,7 +243,9 @@ public class CubesLauncher {
     }
   }
   
-  private static void downloadFile(String remote, File local) {
+  private static void downloadVersion(final Version version, File local, final RunStatus runStatus) {
+    if (version == null || version.downloadPath == null) throw new IllegalStateException("Version null");
+
     FTPClient ftp = new FTPClient();
     FTPClientConfig config = new FTPClientConfig();
     ftp.configure(config);
@@ -254,12 +269,24 @@ public class CubesLauncher {
         ftp.disconnect();
         throw new LauncherException("Failed to set ftp file type");
       }
+
+      if (runStatus != null) {
+        ftp.setCopyStreamListener(new CopyStreamAdapter() {
+          public void bytesTransferred(long totalBytesTransferred, int bytesTransferred, long streamSize) {
+            float progress = ((float) totalBytesTransferred) / ((float) version.getExpectedFileSize());
+            if (progress >= 0 && progress <= 100) {
+              runStatus.update(RunStatus.Stage.downloading, progress);
+            }
+          }
+        });
+      }
+
       OutputStream outputStream = null;
       try {
         outputStream = new BufferedOutputStream(new FileOutputStream(local));
-        boolean success = ftp.retrieveFile(remote, outputStream);
+        boolean success = ftp.retrieveFile(version.downloadPath, outputStream);
         if (!success) {
-          throw new LauncherException("Failed to download " + remote);
+          throw new LauncherException("Failed to download " + version.downloadPath);
         }
       } finally {
         if (outputStream != null) {
@@ -283,7 +310,7 @@ public class CubesLauncher {
         }
       }
     }
-    if (error) throw new LauncherException("Error whilst downloading file " + remote);
+    if (error) throw new LauncherException("Error whilst downloading file " + version.downloadPath);
   }
   
   private static byte[] hexStringToByteArray(String s) {
