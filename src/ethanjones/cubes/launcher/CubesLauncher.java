@@ -217,7 +217,7 @@ public class CubesLauncher {
             throw new LauncherException("Failed to start client", e);
           }
         }
-      }.run();
+      }.start();
     } catch (Exception e) {
       throw new LauncherException("Failed to start client", e);
     }
