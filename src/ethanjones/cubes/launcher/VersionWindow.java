@@ -80,6 +80,13 @@ public class VersionWindow extends JFrame {
     ArrayList<String> versions = new ArrayList<String>();
     versions.addAll(releases);
     versions.addAll(snapshots);
+
+    System.out.println("\nVersions:");
+    for (String version : versions) {
+      System.out.println(CubesLauncher.versions.get(version).toString());
+    }
+    System.out.println();
+
     String[] array = versions.toArray(new String[versions.size()]);
     
     box = Box.createHorizontalBox();

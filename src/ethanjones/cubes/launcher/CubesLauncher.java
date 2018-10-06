@@ -32,7 +32,7 @@ public class CubesLauncher {
       }
     });
     downloadVersions();
-    System.out.println(versions.toString());
+
     SwingUtilities.invokeLater(new Runnable() {
       @Override
       public void run() {
@@ -42,6 +42,7 @@ public class CubesLauncher {
   }
   
   private static void downloadVersions() {
+    long timeNS = System.nanoTime();
     FTPClient ftp = new FTPClient();
     FTPClientConfig config = new FTPClientConfig();
     ftp.configure(config);
@@ -61,7 +62,9 @@ public class CubesLauncher {
         ftp.disconnect();
         throw new LauncherException("Failed to set ftp user " + reply);
       }
-      
+
+      ftp.enterLocalPassiveMode();
+
       FTPFile[] releasesDirectories = ftp.listDirectories(FTP_RELEASES_PATH);
       for (FTPFile ftpDirectory : releasesDirectories) {
         String v = ftpDirectory.getName();
@@ -142,12 +145,14 @@ public class CubesLauncher {
         throw new LauncherException("Error whilst downloading versions, and no cache is available");
       }
     } else {
+      timeNS = System.nanoTime() - timeNS;
+      System.out.println("Took " + String.format("%.2f", (timeNS / 1000000d)) + "ms to download versions");
       saveVersionCache();
     }
   }
 
   private static void saveVersionCache() {
-    long t = System.nanoTime();
+    long timeNS = System.nanoTime();
     try {
       File launcherFolder = getLauncherFolder();
       File versionCache = new File(launcherFolder, "version_cache");
@@ -158,8 +163,8 @@ public class CubesLauncher {
       System.out.println("Failed to save version cache");
       e.printStackTrace();
     }
-    t = System.nanoTime() - t;
-    System.out.println("Took " + t + "ns to save version cache");
+    timeNS = System.nanoTime() - timeNS;
+    System.out.println("Took " + String.format("%.2f", (timeNS / 1000000d)) + "ms to save version cache");
   }
 
   private static boolean loadVersionCache() {
@@ -199,6 +204,7 @@ public class CubesLauncher {
       }
     });
 
+    System.out.println("\n========== Starting Cubes ==========\n");
     try {
       URLClassLoader classLoader = (URLClassLoader)ClassLoader.getSystemClassLoader();
       Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
@@ -268,6 +274,9 @@ public class CubesLauncher {
         ftp.disconnect();
         throw new LauncherException("Failed to set ftp user");
       }
+
+      ftp.enterLocalPassiveMode();
+
       if (!ftp.setFileType(FTPClient.BINARY_FILE_TYPE)) {
         ftp.disconnect();
         throw new LauncherException("Failed to set ftp file type");
