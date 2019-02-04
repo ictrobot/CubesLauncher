@@ -7,7 +7,10 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map.Entry;
@@ -34,12 +37,8 @@ public class VersionWindow extends JFrame {
     
     setLayout(new BorderLayout());
     setSize(240, 140);
-    
-    if (new File("logo.png").exists()) {
-      image = new ImageIcon("logo.png");
-    } else {
-      image = new ImageIcon(getClass().getResource("/logo.png"));
-    }
+
+    image = new ImageIcon(resolveResource("logo.png"));
     imageLabel = new JLabel(image);
     add(imageLabel, BorderLayout.CENTER);
     
@@ -54,6 +53,24 @@ public class VersionWindow extends JFrame {
     
     setVisible(true);
     setLocationRelativeTo(null);
+
+    setIconImages(Arrays.asList(
+            new ImageIcon(resolveResource("icon-128x.png")).getImage(),
+            new ImageIcon(resolveResource("icon-64x.png")).getImage(),
+            new ImageIcon(resolveResource("icon-32x.png")).getImage(),
+            new ImageIcon(resolveResource("icon-16x.png")).getImage()));
+  }
+
+  private URL resolveResource(String path) {
+    try {
+      URL resource = getClass().getResource("/" + path);
+      if (resource != null) return resource;
+      File file = new File(path);
+      if (file.exists()) return file.toURI().toURL();
+      throw new IllegalStateException("Failed to find resource \"" + path + "\"");
+    } catch (MalformedURLException e) {
+      throw new IllegalStateException("Failed to find resource \"" + path + "\"", e);
+    }
   }
   
   void setVersions() {
