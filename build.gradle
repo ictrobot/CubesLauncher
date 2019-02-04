@@ -5,7 +5,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath 'gradle.plugin.edu.sc.seis.gradle:launch4j:1.6.1'
+        classpath 'gradle.plugin.edu.sc.seis.gradle:launch4j:2.3.0'
     }
 }
 apply plugin: 'java'
@@ -59,11 +59,13 @@ launch4j {
     version = version
     textVersion = version
 
+    jvmOptions  = ["-Dethanjones.cubes.launcher=\"Cubes Launcher (Windows launch4j)\""]
+
     icon = project.getRootDir().absolutePath + "/assets/icon.ico"
     copyConfigurable = project.tasks.jar.outputs.files
     jar = new File(project.buildDir, "/libs/launcher.jar")
 }
-copyL4jLib.dependsOn jar
+createExe.dependsOn jar
 
 
 task sourceJar(type: Jar, dependsOn: classes) {

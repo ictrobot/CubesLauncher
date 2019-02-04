@@ -204,6 +204,9 @@ public class CubesLauncher {
       }
     });
 
+    if (!System.getProperties().containsKey("ethanjones.cubes.launcher"))
+      System.setProperty("ethanjones.cubes.launcher", "Cubes Launcher");
+
     System.out.println("\n========== Starting Cubes ==========\n");
     try {
       URLClassLoader classLoader = (URLClassLoader)ClassLoader.getSystemClassLoader();
