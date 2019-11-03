@@ -1,5 +1,5 @@
-language: generic
 os: windows
+language: shell
 branches:
   only:
   - master
