@@ -1,0 +1,9 @@
+language: generic
+os: windows
+branches:
+  only:
+  - master
+install:
+  - choco install corretto8jdk
+  - choco install innosetup
+script: ./gradlew travis --max-workers 1

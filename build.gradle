@@ -1,11 +1,11 @@
 buildscript {
     repositories {
-        maven {
-            url 'https://plugins.gradle.org/m2/'
-        }
+        maven { url 'https://plugins.gradle.org/m2/' }
+        mavenCentral()
     }
     dependencies {
         classpath 'gradle.plugin.edu.sc.seis.gradle:launch4j:2.3.0'
+        classpath group: 'de.dynamicfiles.projects.gradle.plugins', name: 'javafx-gradle-plugin', version: '8.8.2'
     }
 }
 apply plugin: 'java'
@@ -44,11 +44,6 @@ dependencies {
     includeInJar "commons-net:commons-net:3.5"
 }
 
-jar.from { configurations.includeInJar.collect { it.isDirectory() ? it : zipTree(it) } }
-jar.from { new File("assets") }
-jar.manifest.attributes 'Main-Class': project.mainClassName
-jar.archiveName = 'launcher.jar'
-
 launch4j {
     mainClassName = project.mainClassName
     jreMinVersion = '1.7.0'
@@ -65,16 +60,75 @@ launch4j {
     copyConfigurable = project.tasks.jar.outputs.files
     jar = new File(project.buildDir, "/libs/launcher.jar")
 }
-createExe.dependsOn jar
 
+jar {
+    from { new File("assets") }
+    manifest.attributes 'Main-Class': project.mainClassName
+    archiveName = 'cubes-launcher.jar'
+}
+
+
+task bigJar(type: Jar, dependsOn: classes) {
+    with jar
+    from { configurations.includeInJar.collect { it.isDirectory() ? it : zipTree(it) } }
+    archiveName = 'launcher.jar'
+}
+createExe.dependsOn bigJar
 
 task sourceJar(type: Jar, dependsOn: classes) {
     from sourceSets.main.allSource
-
     classifier = 'sources'
+    archiveName = 'sources.jar'
 }
 
-task jars(dependsOn: ['jar', 'sourceJar']) {
+task jars(dependsOn: ['jar', 'bigJar', 'sourceJar']) {
+
+}
+
+if (canBuildWinInstaller()) {
+    // https://github.com/FibreFoX/javafx-gradle-plugin
+    apply plugin: 'javafx-gradle-plugin'
+
+    jfx {
+        verbose = true
+        mainClass = mainClassName
+        jfxAppOutputDir = "build/jfx/app"
+        jfxMainAppJarName = "CubesLauncher.jar"
+        deployDir = "deploy/"
+        useEnvironmentRelativeExecutables = true
+        libFolderName = "lib"
+
+        // gradle jfxNative
+        identifier = "ethanjones.cubes.launcher"
+        vendor = "Ethan Jones"
+        nativeOutputDir = "build/jfx/native"
+        bundler = "exe"
+        jvmProperties = ["ethanjones.cubes.launcher": "Cubes Launcher (Windows jfx)"] // Map<String, String>
+        jvmArgs = ["-Xmx4G", "-Xms4G"]
+        nativeReleaseVersion = version
+        needShortcut = true
+        needMenu = true
+        appName = "Cubes Launcher"
+
+        additionalAppResources  = "deploy/additional/"
+        bundleArguments = ["licenseFile": "LICENSE", "copyright": "Copyright Ethan Jones 2019"]
+        failOnError = true
+        skipCopyingDependencies = false
+    }
+    compileJava.dependsOn clean
+
+    task winInstaller(dependsOn: "jfxNative") {
+
+    }
+} else {
+    task winInstaller() {
+        doLast {
+            throw new GradleException("Cannot build windows installers!")
+        }
+    }
+}
+
+task travisBuild(dependsOn: ['jars', 'createExe', 'winInstaller']) {
 
 }
 
@@ -85,6 +139,11 @@ publishing {
             artifact tasks.sourceJar
             artifact(new File(project.getBuildDir(), '/launch4j/CubesLauncher.exe')) {
                 classifier = 'win'
+            }
+            if (canBuildWinInstaller()) {
+                artifact(new File(project.getBuildDir(), '/jfx/Cubes Launcher-' + version + '.exe')) {
+                    classifier = "win-installer"
+                }
             }
             groupId 'ethanjones.cubes'
             artifactId 'launcher'
@@ -103,15 +162,15 @@ publishing {
 }
 publish.dependsOn(['jar', 'sourceJar', 'launch4j'])
 
-def String getMavenVersionString() {
-    def str = version;
+String getMavenVersionString() {
+    def str = version
     if (!isRelease) {
         str = str + "-SNAPSHOT"
     }
     return str
 }
 
-def String getMavenRepo() {
+String getMavenRepo() {
     def str = localProperties.MAVEN_REPO_PATH
     if (isRelease) {
         str = str + "releases"
@@ -119,4 +178,12 @@ def String getMavenRepo() {
         str = str + "snapshots"
     }
     return str
+}
+
+import org.apache.tools.ant.taskdefs.condition.Os
+
+static boolean canBuildWinInstaller() {
+    return Os.isFamily(Os.FAMILY_WINDOWS) &&
+            System.getProperty("java.vm.name", "").contains("OpenJDK") &&
+            System.getProperty("java.specification.version", "") == "1.8"
 }

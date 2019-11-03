@@ -214,7 +214,7 @@ public class CubesLauncher {
       method.setAccessible(true);
       method.invoke(classLoader, jarFile.toURI().toURL());
       method.setAccessible(false);
-      
+
       Class c = Class.forName(JAVA_CLASS);
       final Method main = c.getDeclaredMethod("main", String[].class);
       new Thread() {
