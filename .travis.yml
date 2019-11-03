@@ -3,7 +3,4 @@ language: shell
 branches:
   only:
   - master
-install:
-  - choco install corretto8jdk
-  - choco install innosetup
-script: powershell -c "refreshenv; Get-ChildItem Env:; ./gradlew travis --max-workers 1"
+script: powershell -c "choco install corretto8jdk; choco install innosetup; refreshenv; Get-ChildItem Env:; ./gradlew travis --max-workers 1"
