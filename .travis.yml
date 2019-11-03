@@ -6,5 +6,4 @@ branches:
 install:
   - choco install corretto8jdk
   - choco install innosetup
-  - refreshenv
-script: ./gradlew travis --max-workers 1
+script: powershell -c "refreshenv; ./gradlew travis --max-workers 1"
